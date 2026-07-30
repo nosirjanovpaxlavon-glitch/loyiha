@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Floating Sound Lamp - Smart Levitatsiyalash Simulyatori</title>
+  <meta name="description" content="Magnit levitatsiyasi, simsiz quvvat uzatish va PID regulyatori sozlash interaktiv boshqaruv paneli.">
+  <link rel="stylesheet" href="lamp_style.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <a href="#" class="logo gradient-title">FLOATING SOUND LAMP</a>
+      <div class="status-indicator">
+        Tizim holati: <span id="statusDot" class="dot"></span> <span id="statusText" style="font-weight: 600;">Kutish rejimida</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Grid Dashboard -->
+  <main class="dashboard-grid">
+
+    <!-- LEFT PANEL: Visualizer & Oscilloscope -->
+    <div class="glass-box visualizer-card">
+      <h3 style="font-size: 18px; margin-bottom: 8px; font-weight: 700;">Haqiqiy Vaqtdagi Muvozanat Simulyatori</h3>
+      <p style="color: var(--text-dim); font-size: 12px; margin-bottom: 24px;">Sferani qo'l bilan ushlab yuqoriga/pastga surib ko'ring va PID qanday reaksiya qilishini kuzating.</p>
+      
+      <!-- Interactive Levitation Area -->
+      <div id="visualizerContainer" class="visualizer-container">
+        <!-- Stand Base -->
+        <div class="physics-stand"></div>
+        
+        <!-- Floating Induction wave visualizer -->
+        <div id="inductionWave" class="induction-wave"></div>
+        
+        <!-- Floating Spherical Lamp -->
+        <div id="physicsLamp" class="physics-lamp"></div>
+      </div>
+      
+      <!-- Live Oscilloscope (Canvas Graph) -->
+      <div class="chart-container">
+        <canvas id="oscCanvas" class="osc-canvas"></canvas>
+        <div style="position: absolute; bottom: 8px; left: 8px; font-size: 10px; display: flex; gap: 12px;">
+          <span style="color: #10b981;">● Belgilangan balandlik (Setpoint)</span>
+          <span id="actualHeightLegend" style="color: var(--accent-cyan);">● Joriy balandlik (Actual)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: Control Center -->
+    <div class="glass-box">
+      <!-- Tabs Navigation -->
+      <div class="control-tabs">
+        <button class="tab-btn active" onclick="switchTab('pid')">PID Regulyator</button>
+        <button class="tab-btn" onclick="switchTab('wireless')">Simsiz Quvvat & RGB</button>
+        <button class="tab-btn" onclick="switchTab('audio')">Bluetooth Audio</button>
+      </div>
+
+      <!-- TAB 1: PID Control Panel -->
+      <div id="pidTab">
+        <h4 style="margin-bottom: 16px; font-weight: 700;">PID Algoritmi Koeffitsientlari</h4>
+        <p style="color: var(--text-dim); font-size: 13px; line-height: 1.5; margin-bottom: 24px;">
+          $K_p$, $K_i$ va $K_d$ parametrlarini slayder yordamida o'zgartiring. Balandlikni ushlab qolish uchun parametrlar to'g'ri sozlanishi lozim, aks holda shar tebranib yiqiladi.
+        </p>
+
+        <!-- Kp -->
+        <div class="slider-group">
+          <div class="slider-label">
+            <span>Proportsional koeffitsient (Kp) - Tezlik/Kattalik reaksiyasi</span>
+            <span id="kpValue" class="value">12.0</span>
+          </div>
+          <input type="range" id="kpSlider" class="range-input" min="0" max="30" step="0.5" value="12">
+        </div>
+
+        <!-- Ki -->
+        <div class="slider-group">
+          <div class="slider-label">
+            <span>Integral koeffitsient (Ki) - Statik xatolikni tuzatish</span>
+            <span id="kiValue" class="value">0.15</span>
+          </div>
+          <input type="range" id="kiSlider" class="range-input" min="0" max="2" step="0.05" value="0.15">
+        </div>
+
+        <!-- Kd -->
+        <div class="slider-group">
+          <div class="slider-label">
+            <span>Differentsial koeffitsient (Kd) - Barqarorlashtirish/Sustlashtirish</span>
+            <span id="kdValue" class="value">6.0</span>
+          </div>
+          <input type="range" id="kdSlider" class="range-input" min="0" max="20" step="0.5" value="6">
+        </div>
+
+        <!-- Setpoint height -->
+        <div class="slider-group" style="margin-top: 32px; border-top: 1px dashed rgba(255,255,255,0.05); padding-top: 24px;">
+          <div class="slider-label">
+            <span>Belgilangan balandlik (Setpoint Height)</span>
+            <span id="heightValue" class="value">220px</span>
+          </div>
+          <input type="range" id="heightSlider" class="range-input" min="120" max="320" step="5" value="220">
+        </div>
+
+        <!-- Switches -->
+        <div class="grid-switches">
+          <div class="switch-card">
+            <div>
+              <div style="font-size: 14px; font-weight: 700;">Elektromagnit (EML)</div>
+              <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Levitatsiyani yoqish</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="levitationToggle">
+              <span class="slider-toggle"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: Wireless Power & RGB -->
+      <div id="wirelessTab" style="display: none;">
+        <h4 style="margin-bottom: 16px; font-weight: 700;">Simsiz Quvvat Uzatish (Induksiya)</h4>
+        <p style="color: var(--text-dim); font-size: 13px; line-height: 1.5; margin-bottom: 24px;">
+          Induktsion g'altaklar (magnetic coils) orqali havodan shar korpusiga simsiz tok yuboriladi. Chiroq stendga qanchalik yaqin bo'lsa, zaryadlash samaradorligi shunchalik yuqori bo'ladi.
+        </p>
+
+        <div class="switch-card" style="margin-bottom: 24px;">
+          <div>
+            <div style="font-size: 14px; font-weight: 700;">Simsiz zaryadlash (Wireless Power)</div>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Induktsion tok uzatish</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="wirelessToggle">
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
+
+        <h4 style="margin-top: 32px; margin-bottom: 12px; font-weight: 700;">RGB Yoritish Rejimlari</h4>
+        <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 16px;">Sferadagi LED chiroqlar rangini tanlang:</p>
+        
+        <div class="color-presets">
+          <div class="color-dot active" data-color="cyan" style="background-color: var(--accent-cyan);"></div>
+          <div class="color-dot" data-color="purple" style="background-color: var(--accent-purple);"></div>
+          <div class="color-dot" data-color="indigo" style="background-color: var(--accent-indigo);"></div>
+          <div class="color-dot" data-color="sunset" style="background-color: #f97316;"></div>
+        </div>
+      </div>
+
+      <!-- TAB 3: Bluetooth Audio Panel -->
+      <div id="audioTab" style="display: none;">
+        <h4 style="margin-bottom: 16px; font-weight: 700;">Bluetooth Ovoz & Ritm Sinxronizatsiyasi</h4>
+        <p style="color: var(--text-dim); font-size: 13px; line-height: 1.5; margin-bottom: 24px;">
+          360° tovushni stol ustidagi shar orqali tarqatish. Musiqiy ritmni yoqish orqali yorug'lik effektlarini qo'shiq chastotasiga bog'lash mumkin.
+        </p>
+
+        <div class="switch-card">
+          <div>
+            <div style="font-size: 14px; font-weight: 700;">Musiqa Ritmi (Music Sync)</div>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Chiroqni musiqaga moslashtirish</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="musicToggle">
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
+
+        <!-- Frequency Equalizer Display -->
+        <div id="visualizerBars" class="visualizer-bars">
+          <!-- Bars injected via JS -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- BOTTOM SECTION: Technical Guide & Source Code -->
+  <section class="schematics-section">
+    <h2 class="gradient-title" style="font-size: 28px; margin-bottom: 32px; text-align: center;">Tizimni Qanday Yaratish Mumkin? (Bosqichma-bosqich)</h2>
+
+    <div class="dashboard-grid" style="margin-top: 0; padding: 0;">
+      <!-- Step 1 -->
+      <div class="glass-box step-card">
+        <div class="step-header">
+          <div class="step-num">1</div>
+          <div class="step-title">ESP32 / Arduino PID Kod Tizimi</div>
+        </div>
+        <p style="color: var(--text-dim); font-size: 13px; line-height: 1.5;">
+          Xoll datchigidan (Hall Sensor) kelayotgan qiymatlarni o'qib, elektromagnitga beriladigan kuchlanishni (PWM) PID regulyator orqali boshqarish kodi:
+        </p>
+        <div class="code-block">
+// Arduino PID Levitation Control Loop
+double Kp = 12.0, Ki = 0.15, Kd = 6.0;
+double setpoint = 512; // Xoll datchigining normal nuqtasi
+double integral = 0, lastError = 0;
+
+void loop() {
+  double currentPos = analogRead(A0); // Xoll datchigidan o'qish
+  double error = setpoint - currentPos;
+  
+  integral += error;
+  double derivative = error - lastError;
+  double output = (Kp * error) + (Ki * integral) + (Kd * derivative);
+  
+  lastError = error;
+  
+  // PWM signal yuborish (Mosfet orqali elektromagnitni boshqarish)
+  analogWrite(PWM_PIN, constrain(output, 0, 255));
+  delay(1); // 1KHz chastota
+}
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="glass-box step-card">
+        <div class="step-header">
+          <div class="step-num">2</div>
+          <div class="step-title">Simsiz Quvvat & Bluetooth Audio</div>
+        </div>
+        <p style="color: var(--text-dim); font-size: 13px; line-height: 1.5; margin-bottom: 16px;">
+          **Wireless induction link**: Stend ichiga 12V Induktsion g'altak va generator platasi, shar ichiga esa qabul qiluvchi kichik g'altak (receiver module) va 5V stabilizator platasi o'rnatiladi.
+        </p>
+        <p style="color: var(--text-dim); font-size: 13px; line-height: 1.5; margin-bottom: 16px;">
+          **Audio**: Shar ichiga juda kichik 3W quvvatli Bluetooth 5.0 audio chipi va kichik sharsimon akustik qutiga ega dinamik joylashtiriladi. Energiya to'liq havo orqali kelayotgan induksion tokdan olinadi.
+        </p>
+        <div style="background: rgba(99,102,241,0.05); padding: 16px; border-radius: 8px; border: 1px solid rgba(99,102,241,0.1); font-size: 12px;">
+          <strong>Kerakli komponentlar ro'yxati:</strong><br>
+          • Mikrokontroller: ESP32 yoki Arduino Nano<br>
+          • Datchik: AH3503 linear Hall sensor<br>
+          • Elektromagnit: 12V 5kg ushlab turish kuchi<br>
+          • Drayver: IRF540N Mosfet moduli<br>
+          • Simsiz zaryad: 12V Transmitter + 5V Receiver kiti<br>
+          • Dinamik: 3W, 4 Ohm diametri 40mm
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- External Script -->
+  <script src="lamp_app.js"></script>
+</body>
+</html>
